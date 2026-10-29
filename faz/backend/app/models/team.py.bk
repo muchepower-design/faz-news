@@ -1,0 +1,32 @@
+# models/team.py
+from sqlalchemy import Column, String, Integer, Text, DateTime
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
+from app.models._base import Base
+import uuid
+
+class Team(Base):
+    __tablename__ = "teams"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String, unique=True, index=True)
+    short_name = Column(String)
+    logo = Column(String, nullable=True)
+    founded = Column(Integer)
+    stadium = Column(String)
+    coach = Column(String)
+    description = Column(Text, nullable=True)
+    gender = Column(String, default="male")
+    team_type = Column(String, default="club")  # discriminator: 'national' or 'club'
+    current_league_level = Column(String, nullable=True)
+    league_tier = Column(Integer, default=3)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Reverse relationship with Group
+    groups = relationship("Group", secondary="group_teams", back_populates="teams")
+
+    __mapper_args__ = {
+        "polymorphic_identity": "team",
+        "polymorphic_on": team_type,
+    }

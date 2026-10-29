@@ -1,0 +1,2373 @@
+Main system frontend (faz.kanchtech.com/frontend/src/)
+
+api.js;
+// frontend/src/api.js
+import axios from 'axios';
+
+const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+
+const api = axios.create({
+  baseURL: `${API_BASE}/api`,
+  headers: { 'Content-Type': 'application/json' },
+});
+
+// Add token to requests if available
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Create a separate axios instance for auth (no /api prefix)
+export const authAxios = axios.create({
+  baseURL: API_BASE,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+authAxios.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// ---------- News API ----------
+export const newsAPI = {
+  getAll: (params) => api.get('/news/', { params }),
+  getFeatured: () => api.get('/news/featured'),
+  getById: (id) => api.get(`/news/${id}`),
+  search: (query) => api.get('/news/search', { params: { q: query } }),
+  filterByDate: (month, year) => api.get('/news/filter', { params: { month, year } }),
+  getYears: () => api.get('/news/years'),
+  create: (data) => api.post('/admin/news', data),
+  update: (id, data) => api.put(`/admin/news/${id}`, data),
+  delete: (id) => api.delete(`/admin/news/${id}`),
+};
+
+// ---------- Media API ----------
+export const mediaAPI = {
+  getVideos: (params) => api.get('/media/videos', { params }),
+  getVideo: (id) => api.get(`/media/videos/${id}`),
+  searchVideos: (query) => api.get('/media/videos/search', { params: { q: query } }),
+  createVideo: (data) => api.post('/media/videos', data),
+  deleteVideo: (id) => api.delete(`/media/videos/${id}`),
+  getGalleries: (params) => api.get('/media/galleries', { params }),
+  getGallery: (id) => api.get(`/media/galleries/${id}`),
+  searchGalleries: (query) => api.get('/media/galleries/search', { params: { q: query } }),
+  createGallery: (data) => api.post('/media/galleries', data),
+  addGalleryImage: (galleryId, data) => api.post(`/media/galleries/${galleryId}/images`, data),
+  deleteGallery: (id) => api.delete(`/media/galleries/${id}`),
+  deleteGalleryImage: (galleryId, imageId) => api.delete(`/media/galleries/${galleryId}/images/${imageId}`),
+};
+
+// ---------- Matches API ----------
+export const matchesAPI = {
+  getAll: (params) => api.get('/matches/', { params }),
+  getLatest: () => api.get('/matches/latest'),
+  getUpcoming: () => api.get('/matches/upcoming'),
+  getById: (id) => api.get(`/matches/${id}`),
+  // FIXED: send data in JSON body, not as query params
+  updateScore: (id, homeScore, awayScore, status) =>
+    api.patch(`/matches/${id}/score`, { home_score: homeScore, away_score: awayScore, status }),
+  updateStatus: (id, status) =>
+    api.patch(`/matches/${id}/score`, { status }),
+  create: (data) => api.post('/admin/matches', data),
+  update: (id, data) => api.put(`/admin/matches/${id}`, data),
+  delete: (id) => api.delete(`/admin/matches/${id}`),
+  getByReferee: (refereeId) => api.get(`/matches/referee/${refereeId}`),
+};
+
+// ---------- Teams API ----------
+export const teamsAPI = {
+  getAll: () => api.get('/teams/'),
+  getById: (id) => api.get(`/teams/${id}`),
+  create: (data) => api.post('/admin/teams', data),
+  update: (id, data) => api.put(`/admin/teams/${id}`, data),
+  delete: (id) => api.delete(`/admin/teams/${id}`),
+};
+
+// ---------- Players API ----------
+export const playersAPI = {
+  getAll: (params) => api.get('/players/', { params }),
+  getTopScorers: () => api.get('/players/top-scorers'),
+  create: (data) => api.post('/admin/players', data),
+  update: (id, data) => api.put(`/admin/players/${id}`, data),
+  delete: (id) => api.delete(`/admin/players/${id}`),
+};
+
+// ---------- League Table API ----------
+export const tableAPI = {
+  getTable: (season) => api.get('/league-table/', { params: { season } }),
+  getSeasons: () => api.get('/league-table/seasons'),
+};
+
+// ---------- Authentication API ----------
+export const authAPI = {
+  login: async (email, password) => {
+    return authAxios.post('/api/ticketing/auth/login', { email, password });
+  },
+  register: (userData) => authAxios.post('/api/ticketing/auth/register', userData),
+};
+
+// ---------- Match Events API ----------
+export const matchEventsAPI = {
+  create: (data) => api.post('/match-events/', data),
+  getByMatch: (matchId) => api.get(`/match-events/match/${matchId}`),
+  delete: (id) => api.delete(`/match-events/${id}`),
+};
+
+// ---------- User Management API ----------
+export const usersAPI = {
+  getAll: () => api.get('/admin/users'),
+  create: (data) => api.post('/admin/users', data),
+  delete: (id) => api.delete(`/admin/users/${id}`),
+  getMe: () => api.get('/users/me'),
+};
+
+// ---------- Bulk Import API ----------
+export const bulkImportAPI = {
+  importTeams: (formData) =>
+    api.post('/bulk-import/teams', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  importPlayers: (formData) =>
+    api.post('/bulk-import/players', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  importMatches: (formData) =>
+    api.post('/bulk-import/matches', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+};
+
+// ---------- Reports API ----------
+export const reportsAPI = {
+  create: (data) => api.post('/reports/match-reports', data),
+  update: (id, data) => api.put(`/reports/match-reports/${id}`, data),
+  getByMatch: (matchId) => api.get(`/reports/match-reports/match/${matchId}`),
+};
+
+// ---------- Leagues API ----------
+export const leaguesAPI = {
+  getAll: (params) => api.get('/leagues/', { params }),
+  getById: (id) => api.get(`/leagues/${id}`),
+  getStandings: (leagueId, season) => api.get(`/leagues/${leagueId}/standings`, { params: { season } }),
+  // FIXED: send season in JSON body, not query param
+  applyPromotionRelegation: (season) => api.post('/leagues/promotion-relegation/apply', { season }),
+};
+
+// ---------- National Teams API ----------
+export const nationalTeamsAPI = {
+  getAll: (params) => api.get('/national-teams/', { params }),
+  getById: (id) => api.get(`/national-teams/${id}`),
+  getFixtures: (teamId) => api.get(`/national-teams/${teamId}/fixtures`),
+  getTournaments: (teamId) => api.get(`/national-teams/${teamId}/tournaments`),
+  getAllTournaments: (params) => api.get('/national-teams/tournaments', { params }),
+  createFixture: (teamId, data) => api.post(`/national-teams/${teamId}/fixtures`, data),
+  updateResult: (fixtureId, data) => api.patch(`/national-teams/fixtures/${fixtureId}`, data),
+};
+
+// ---------- Cups API ----------
+export const cupsAPI = {
+  getAll: (params) => api.get('/cups/', { params }),
+  getById: (id) => api.get(`/cups/${id}`),
+  getSeasons: (cupId) => api.get(`/cups/${cupId}/seasons`),
+  getMatches: (seasonId) => api.get(`/cups/seasons/${seasonId}/matches`),
+  addMatch: (seasonId, data) => api.post(`/cups/seasons/${seasonId}/matches`, data),
+  updateMatchResult: (matchId, data) => api.patch(`/cups/matches/${matchId}`, data),
+  getContinentalQualifications: (season) => api.get('/cups/continental-qualifications', { params: { season } }),
+  // FIXED: send season in JSON body, not query param
+  applyContinentalQualifications: (season) => api.post('/cups/continental-qualifications/apply', { season }),
+};
+
+// ---------- Competitions API (public) ----------
+export const competitionsAPI = {
+  getAll: (params) => api.get('/competitions/', { params }),
+  getById: (id, params) => api.get(`/competitions/${id}`, { params }),
+  getSeasons: () => api.get('/competitions/seasons'),
+  getStandings: (competitionId, season) => api.get(`/competitions/${competitionId}/standings`, { params: { season } }),
+};
+
+// ---------- Competition Management API (admin) ----------
+export const competitionManagementAPI = {
+  getCompetitions: (params) => api.get('/competitions-management/competitions', { params }),
+  getCompetition: (id) => api.get(`/competitions-management/competitions/${id}`),
+  createCompetition: (data) => api.post('/competitions-management/competitions', data),
+  updateCompetition: (id, data) => api.put(`/competitions-management/competitions/${id}`, data),
+  deleteCompetition: (id) => api.delete(`/competitions-management/competitions/${id}`),
+  getSeasons: (competitionId) => api.get(`/competitions-management/competitions/${competitionId}/seasons`),
+  createSeason: (competitionId, data) => api.post(`/competitions-management/competitions/${competitionId}/seasons`, data),
+  updateSeason: (seasonId, data) => api.put(`/competitions-management/seasons/${seasonId}`, data),
+  deleteSeason: (seasonId) => api.delete(`/competitions-management/seasons/${seasonId}`),
+  getStages: (seasonId) => api.get(`/competitions-management/seasons/${seasonId}/stages`),
+  createStage: (seasonId, data) => api.post(`/competitions-management/seasons/${seasonId}/stages`, data),
+  updateStage: (stageId, data) => api.put(`/competitions-management/stages/${stageId}`, data),
+  deleteStage: (stageId) => api.delete(`/competitions-management/stages/${stageId}`),
+  getGroups: (stageId) => api.get(`/competitions-management/stages/${stageId}/groups`),
+  createGroup: (stageId, data) => api.post(`/competitions-management/stages/${stageId}/groups`, data),
+  updateGroup: (groupId, data) => api.put(`/competitions-management/groups/${groupId}`, data),
+  deleteGroup: (groupId) => api.delete(`/competitions-management/groups/${groupId}`),
+  getMatches: (seasonId) => api.get(`/competitions-management/seasons/${seasonId}/matches`),
+  createMatch: (stageId, data) => api.post(`/competitions-management/stages/${stageId}/matches`, data),
+  updateMatch: (matchId, data) => api.put(`/competitions-management/matches/${matchId}`, data),
+  deleteMatch: (matchId) => api.delete(`/competitions-management/matches/${matchId}`),
+  getGroupStandings: (groupId) => api.get(`/competitions-management/groups/${groupId}/standings`),
+  getSeasonStandings: (seasonId) => api.get(`/competitions-management/seasons/${seasonId}/standings`),
+  createQualificationRule: (data) => api.post('/competitions-management/qualification-rules', data),
+  updateQualificationRule: (ruleId, data) => api.put(`/competitions-management/qualification-rules/${ruleId}`, data),
+  deleteQualificationRule: (ruleId) => api.delete(`/competitions-management/qualification-rules/${ruleId}`),
+  getQualificationRules: (stageId) => api.get(`/competitions-management/stages/${stageId}/qualification-rules`),
+  createFriendly: (data) => api.post('/competitions-management/friendlies', data),
+};
+
+// ---------- Shop API ----------
+export const shopAPI = {
+  getCategories: () => api.get('/shop/categories'),
+  getProducts: (params) => api.get('/shop/products', { params }),
+  getProduct: (id) => api.get(`/shop/products/${id}`),
+  getCart: () => api.get('/shop/cart'),
+  addToCart: (data) => api.post('/shop/cart/add', data),
+  updateCartItem: (itemId, quantity) => api.put(`/shop/cart/update/${itemId}`, { quantity }),
+  removeCartItem: (itemId) => api.delete(`/shop/cart/remove/${itemId}`),
+  getOrder: (id) => api.get(`/shop/orders/${id}`),
+  checkout: (data) => api.post('/shop/checkout', data),
+  initiatePayment: (data) => api.post('/shop/payment/initiate', data),
+  checkPaymentStatus: (depositId) => api.get(`/shop/payment/status/${depositId}`),
+  getPaymentProviders: () => api.get('/shop/payment/providers'),
+};
+
+// ---------- Public National Teams API ----------
+export const nationalTeamsPublicAPI = {
+  getAll: (params) => api.get('/national-teams/', { params }),
+  getById: (id) => api.get(`/national-teams/${id}`),
+};
+
+// ---------- Public Clubs API ----------
+export const clubsAPI = {
+  getAll: (params) => api.get('/clubs/', { params }),
+  getById: (id) => api.get(`/clubs/${id}`),
+};
+
+
+// ---------- Public Content API ----------
+export const contentAPI = {
+  getHeroSlides: () => api.get('/content/hero-slides'),
+  getPartners: () => api.get('/content/partners'),
+  getGovernanceMembers: (params) => api.get('/content/governance-members', { params }),
+  getPageByPath: (path) => api.get('/content/pages/by-path', { params: { path } }),
+};
+
+// ---------- Admin Content API ----------
+export const adminContentAPI = {
+  // Hero
+  listHero: () => api.get('/content/admin/hero-slides'),
+  createHero: (data) => api.post('/content/admin/hero-slides', data),
+  updateHero: (id, data) => api.put(`/content/admin/hero-slides/${id}`, data),
+  deleteHero: (id) => api.delete(`/content/admin/hero-slides/${id}`),
+
+  // Partners
+  listPartners: () => api.get('/content/admin/partners'),
+  createPartner: (data) => api.post('/content/admin/partners', data),
+  updatePartner: (id, data) => api.put(`/content/admin/partners/${id}`, data),
+  deletePartner: (id) => api.delete(`/content/admin/partners/${id}`),
+
+  // Governance
+  listMembers: () => api.get('/content/admin/governance-members'),
+  createMember: (data) => api.post('/content/admin/governance-members', data),
+  updateMember: (id, data) => api.put(`/content/admin/governance-members/${id}`, data),
+  deleteMember: (id) => api.delete(`/content/admin/governance-members/${id}`),
+
+  // Pages
+  listPages: () => api.get('/content/admin/pages'),
+  createPage: (data) => api.post('/content/admin/pages', data),
+  updatePage: (id, data) => api.put(`/content/admin/pages/${id}`, data),
+  deletePage: (id) => api.delete(`/content/admin/pages/${id}`),
+
+  // Navigation tree
+  listNavTree: () => api.get('/content/admin/nav-items'),
+  createNavItem: (data) => api.post('/content/admin/nav-items', data),
+  updateNavItem: (id, data) => api.put(`/content/admin/nav-items/${id}`, data),
+  deleteNavItem: (id) => api.delete(`/content/admin/nav-items/${id}`),
+  seedNavDefaults: () => api.post('/content/admin/seed-nav-defaults'),
+
+  // Footer sections + links
+  listFooterSections: () => api.get('/content/admin/footer-sections'),
+  createFooterSection: (data) => api.post('/content/admin/footer-sections', data),
+  updateFooterSection: (id, data) => api.put(`/content/admin/footer-sections/${id}`, data),
+  deleteFooterSection: (id) => api.delete(`/content/admin/footer-sections/${id}`),
+
+  createFooterLink: (data) => api.post('/content/admin/footer-links', data),
+  updateFooterLink: (id, data) => api.put(`/content/admin/footer-links/${id}`, data),
+  deleteFooterLink: (id) => api.delete(`/content/admin/footer-links/${id}`),
+  seedFooterDefaults: () => api.post('/content/admin/seed-footer-defaults'),
+};
+
+export const publicContentAPI = {
+  getNavTree: () => api.get('/content/nav-tree'),
+  getFooter: () => api.get('/content/footer'),
+  // you likely already have getHeroSlides / getPartners / getGovernanceMembers / getPageByPath here
+};
+
+
+export default api;
+
+
+
+context/AuthContext.jsx;
+// frontend/src/context/AuthContext.jsx
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import { authAPI } from '../api';
+import { jwtDecode } from 'jwt-decode';
+
+const AuthContext = createContext();
+
+export const useAuth = () => useContext(AuthContext);
+
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const userStr = localStorage.getItem('user');
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        if (userStr) {
+          const userData = JSON.parse(userStr);
+          // Merge: use userData fields, but ensure role is set from decoded token if missing
+          setUser({ ...userData, role: userData.role || decoded.role });
+        } else {
+          // Fallback: only username and role from token
+          setUser({ username: decoded.sub, role: decoded.role });
+        }
+      } catch (e) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setUser(null);
+      }
+    }
+    setLoading(false);
+  }, []);
+
+  const login = async (email, password) => {
+    try {
+      const response = await authAPI.login(email, password);
+      const { access_token, user: userData } = response.data;
+      localStorage.setItem('token', access_token);
+      localStorage.setItem('user', JSON.stringify(userData));
+      const decoded = jwtDecode(access_token);
+      setUser({ ...userData, role: userData.role || decoded.role });
+      return { success: true, user: userData };
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const logout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
+    window.location.href = '/';
+  };
+
+  const hasRole = (role) => user?.role === role;
+  const hasAnyRole = (roles) => roles.includes(user?.role);
+
+  return (
+    <AuthContext.Provider value={{ user, login, logout, loading, isAuthenticated: !!user, hasRole, hasAnyRole }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+
+context/CartContext.jsx;
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import { shopAPI } from '../api';
+
+const CartContext = createContext();
+
+export const useCart = () => useContext(CartContext);
+
+export const CartProvider = ({ children }) => {
+  const [cartCount, setCartCount] = useState(0);
+  const [cartItems, setCartItems] = useState([]);
+  const [cartSubtotal, setCartSubtotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+
+  const fetchCart = async () => {
+    setLoading(true);
+    try {
+      const res = await shopAPI.getCart();
+      const items = res.data.items || [];
+      const subtotal = res.data.subtotal || 0;
+      const total = res.data.total || 0;
+      setCartItems(items);
+      setCartSubtotal(subtotal);
+      const totalCount = items.reduce((sum, item) => sum + item.quantity, 0);
+      setCartCount(totalCount);
+      
+      // Dispatch event for navbar to listen (for components not using context)
+      window.dispatchEvent(new CustomEvent('cartUpdated', { detail: { count: totalCount, items, subtotal, total } }));
+      return { items, subtotal, total };
+    } catch (error) {
+      console.error('Error fetching cart:', error);
+      return { items: [], subtotal: 0, total: 0 };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addToCart = async (productId, quantity = 1, buyNow = false) => {
+    try {
+      await shopAPI.addToCart({ product_id: productId, quantity });
+      // Wait a moment for the server to process
+      setTimeout(() => {
+        fetchCart();
+      }, 100);
+      return true;
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      return false;
+    }
+  };
+
+  const updateQuantity = async (itemId, quantity) => {
+    try {
+      await shopAPI.updateCartItem(itemId, quantity);
+      await fetchCart();
+    } catch (error) {
+      console.error('Error updating quantity:', error);
+    }
+  };
+
+  const removeItem = async (itemId) => {
+    try {
+      await shopAPI.removeCartItem(itemId);
+      await fetchCart();
+    } catch (error) {
+      console.error('Error removing item:', error);
+    }
+  };
+
+  const clearCart = async () => {
+    for (const item of cartItems) {
+      await shopAPI.removeCartItem(item.id);
+    }
+    await fetchCart();
+  };
+
+  useEffect(() => {
+    fetchCart();
+    
+    // Listen for storage events (for cross-tab updates)
+    const handleStorageChange = (e) => {
+      if (e.key === 'cart_updated') {
+        fetchCart();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  return (
+    <CartContext.Provider value={{
+      cartCount,
+      cartItems,
+      cartSubtotal,
+      loading,
+      addToCart,
+      updateQuantity,
+      removeItem,
+      clearCart,
+      refreshCart: fetchCart
+    }}>
+      {children}
+    </CartContext.Provider>
+  );
+};
+
+
+
+
+layouts/MainLayout.jsx;
+there is no such a directory or file
+
+components/ui/index.jsx (or .js);
+there is no such a directory or file
+
+components/ImageInput.jsx;
+// frontend/src/components/ImageInput.jsx
+import { useState, useRef } from 'react';
+import { Upload, Link as LinkIcon, X, Loader2 } from 'lucide-react';
+import toast from 'react-hot-toast';
+import api from '../api';
+import { resolveAssetUrl } from '../utils/assets';
+
+export default function ImageInput({
+  label = 'Image',
+  value,
+  onChange,
+  category = 'general',
+  required = false,
+  hint,
+  className = '',
+}) {
+  const [mode, setMode] = useState('url');          // 'url' | 'upload'
+  const [uploading, setUploading] = useState(false);
+  const [previewError, setPreviewError] = useState(false);
+  const inputRef = useRef(null);
+
+  const handleFile = async (file) => {
+    if (!file) return;
+    setUploading(true);
+    setPreviewError(false);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('category', category);
+      const res = await api.post('/uploads/image', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      onChange(res.data.url);
+      toast.success('Image uploaded');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFile(file);
+  };
+
+  return (
+    <div className={`space-y-2 ${className}`}>
+      {/* Header with label + mode toggle */}
+      <div className="flex items-center justify-between">
+        <label className="block text-sm font-medium text-gray-700">
+          {label}
+          {required && <span className="text-red-500 ml-0.5">*</span>}
+        </label>
+
+        <div className="inline-flex rounded-lg border border-gray-200 p-0.5 bg-gray-50">
+          <button
+            type="button"
+            onClick={() => setMode('url')}
+            className={`px-3 py-1 text-xs rounded-md flex items-center gap-1 transition ${
+              mode === 'url' ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <LinkIcon className="w-3 h-3" /> URL
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('upload')}
+            className={`px-3 py-1 text-xs rounded-md flex items-center gap-1 transition ${
+              mode === 'upload' ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <Upload className="w-3 h-3" /> Upload
+          </button>
+        </div>
+      </div>
+
+      {/* Mode-specific input */}
+      {mode === 'url' ? (
+        <input
+          type="text"
+          value={value || ''}
+          onChange={(e) => { onChange(e.target.value); setPreviewError(false); }}
+          placeholder="https://example.com/image.jpg"
+          required={required}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-faz-orange/30 focus:border-faz-orange"
+        />
+      ) : (
+        <div className="relative">
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => handleFile(e.target.files?.[0])}
+          />
+          <div
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={handleDrop}
+            onClick={() => !uploading && inputRef.current?.click()}
+            className="border-2 border-dashed border-gray-300 hover:border-faz-orange rounded-lg p-6 text-center cursor-pointer transition"
+          >
+            {uploading ? (
+              <div className="flex items-center justify-center gap-2 text-gray-500">
+                <Loader2 className="w-5 h-5 animate-spin" /> Uploading…
+              </div>
+            ) : (
+              <>
+                <Upload className="w-6 h-6 mx-auto text-gray-400 mb-1" />
+                <p className="text-sm text-gray-600">Click to choose or drag & drop</p>
+                <p className="text-xs text-gray-400 mt-1">PNG, JPG, WEBP, GIF, AVIF — up to 10 MB</p>
+              </>
+            )}
+          </div>
+
+          {/* Hidden shim so HTML form validation passes when Upload mode is active */}
+          {required && (
+            <input
+              tabIndex={-1}
+              required
+              value={value || ''}
+              onChange={() => {}}
+              className="absolute opacity-0 pointer-events-none w-0 h-0"
+            />
+          )}
+        </div>
+      )}
+
+      {/* Preview */}
+      {value && !previewError && (
+        <div className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
+          <img
+            src={resolveAssetUrl(value)}
+            alt="preview"
+            className="w-16 h-16 object-cover rounded border border-gray-200"
+            onError={() => setPreviewError(true)}
+          />
+          <p className="flex-1 min-w-0 text-xs text-gray-500 truncate">{value}</p>
+          <button
+            type="button"
+            onClick={() => { onChange(''); setPreviewError(false); }}
+            className="p-1 text-gray-400 hover:text-red-500"
+            title="Clear image"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {value && previewError && (
+        <p className="text-xs text-red-500">Could not load preview — check the URL.</p>
+      )}
+
+      {hint && <p className="text-xs text-gray-500">{hint}</p>}
+    </div>
+  );
+}
+
+
+App.jsx;
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
+import { AuthProvider } from './context/AuthContext';
+import Navbar from './components/Navbar';
+
+// Public pages (existing)
+import Home from './pages/Home';
+import News from './pages/News';
+import Matches from './pages/Matches';
+import LeagueTable from './pages/LeagueTable';
+import Teams from './pages/Teams';
+import Players from './pages/Players';
+import Login from './pages/Login';
+import About from './pages/About';
+import Governance from './pages/Governance';
+import Contact from './pages/Contact';
+
+// New mega‑menu pages
+import Competitions from './pages/Competitions';
+import CompetitionDetail from './pages/CompetitionDetail'; // Public competition detail
+import NationalTeams from './pages/NationalTeams';
+import Futsal from './pages/Futsal';
+import Shop from './pages/Shop';
+import AboutFAZ from './pages/AboutFAZ';
+import Media from './pages/Media';
+import Development from './pages/Development';
+import PageDetail from './pages/PageDetail';
+
+// Role‑based dashboards
+import ProtectedRoute from './components/ProtectedRoute';
+import AdminDashboard from './pages/AdminDashboard';
+import MatchCommissionerDashboard from './pages/MatchCommissionerDashboard';
+import MediaOfficerDashboard from './pages/MediaOfficerDashboard';
+import ClubRepDashboard from './pages/ClubRepDashboard';
+import RefereeDashboard from './pages/RefereeDashboard';
+import ViewerDashboard from './pages/ViewerDashboard';
+
+import Leagues from './pages/Leagues';
+import LeagueStandings from './pages/LeagueStandings';
+import NationalTeamDetail from './pages/NationalTeamDetail';
+import PromotionRelegation from './pages/PromotionRelegation';
+
+import CupCompetitions from './pages/CupCompetitions';
+import CupDetail from './pages/CupDetail';
+
+import NewsDetail from './pages/NewsDetail';
+import MediaVideos from './pages/MediaVideos';
+import MediaGalleries from './pages/MediaGalleries';
+import MediaAccreditation from './pages/MediaAccreditation';
+import GalleryDetail from './pages/GalleryDetail';
+
+import Cart from './pages/Cart';
+import OrderConfirmation from './pages/OrderConfirmation';
+import { CartProvider } from './context/CartContext';
+
+// Admin competition management components (renamed to avoid conflict)
+import CompetitionsDashboard from './pages/admin/competitions/CompetitionsDashboard';
+import AdminCompetitionDetail from './pages/admin/competitions/CompetitionDetail'; // Renamed
+import SeasonDetail from './pages/admin/competitions/SeasonDetail';
+import Friendlies from './pages/admin/competitions/Friendlies';
+
+//import NationalTeams from './pages/NationalTeams';
+import Clubs from './pages/Clubs';
+
+import ContentManager from './pages/admin/content/ContentManager';
+
+function App() {
+  return (
+    <Router>
+      <AuthProvider>
+        <CartProvider>
+          <div className="min-h-screen flex flex-col">
+            <Navbar />
+            <main className="flex-grow">
+              <AnimatePresence mode="wait">
+                <Routes>
+                  {/* ===== Public routes ===== */}
+                  <Route path="/" element={<Home />} />
+                  <Route path="/news" element={<News />} />
+                  <Route path="/matches" element={<Matches />} />
+                  <Route path="/league-table" element={<LeagueTable />} />
+                  <Route path="/teams" element={<Teams />} />
+                  <Route path="/players" element={<Players />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/about" element={<About />} />
+                  <Route path="/governance" element={<Governance />} />
+                  <Route path="/contact" element={<Contact />} />
+
+                  {/* ===== Club routes ===== */}
+                  <Route path="/clubs" element={<Clubs />} />
+
+                  {/* ===== Mega‑menu routes ===== */}
+                  <Route path="/competitions" element={<Competitions />} />
+                  <Route path="/competitions/:competitionId" element={<CompetitionDetail />} />
+
+                  {/* National Teams */}
+                  <Route path="/national-teams" element={<NationalTeams />} />
+                  <Route path="/national-teams/men/:team" element={<PageDetail />} />
+                  <Route path="/national-teams/women/:team" element={<PageDetail />} />
+                  <Route path="/national-teams/competitions/:comp" element={<PageDetail />} />
+
+                  {/* Futsal */}
+                  <Route path="/futsal" element={<Futsal />} />
+                  <Route path="/futsal/:slug" element={<PageDetail />} />
+
+                  {/* Shop */}
+                  <Route path="/shop" element={<Shop />} />
+                  <Route path="/shop/:category" element={<PageDetail />} />
+
+                  {/* About FAZ */}
+                  <Route path="/about/:slug" element={<PageDetail />} />
+                  <Route path="/staff" element={<PageDetail />} />
+                  <Route path="/committees" element={<PageDetail />} />
+                  <Route path="/partners" element={<PageDetail />} />
+
+                  {/* Governance */}
+                  <Route path="/governance/:slug" element={<PageDetail />} />
+
+                  {/* Media */}
+                  <Route path="/media" element={<Media />} />
+                  <Route path="/media/:slug" element={<PageDetail />} />
+
+                  {/* Development */}
+                  <Route path="/development" element={<Development />} />
+                  <Route path="/development/:slug" element={<PageDetail />} />
+
+                  {/* Documents */}
+                  <Route path="/documents" element={<PageDetail />} />
+                  <Route path="/documents/:slug" element={<PageDetail />} />
+
+                  {/* ===== Protected role‑based dashboards ===== */}
+                  <Route
+                    path="/admin/dashboard"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+                        <AdminDashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  <Route
+  path="/admin/content"
+  element={
+    <ProtectedRoute allowedRoles={['admin', 'super_admin', 'faz_admin']}>
+      <ContentManager />
+    </ProtectedRoute>
+  }
+/>
+
+                  {/* Admin competition management */}
+                  <Route
+                    path="/admin/competitions"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+                        <CompetitionsDashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/competitions/:competitionId"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+                        <AdminCompetitionDetail />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/competitions/:competitionId/seasons/:seasonId"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+                        <SeasonDetail />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/friendlies"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+                        <Friendlies />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  <Route
+                    path="/commissioner/dashboard"
+                    element={
+                      <ProtectedRoute allowedRoles={['match_commissioner']}>
+                        <MatchCommissionerDashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/media/dashboard"
+                    element={
+                      <ProtectedRoute allowedRoles={['media_officer']}>
+                        <MediaOfficerDashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/club/dashboard"
+                    element={
+                      <ProtectedRoute allowedRoles={['club_rep']}>
+                        <ClubRepDashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/referee/dashboard"
+                    element={
+                      <ProtectedRoute allowedRoles={['referee']}>
+                        <RefereeDashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/dashboard"
+                    element={
+                      <ProtectedRoute allowedRoles={['viewer']}>
+                        <ViewerDashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  {/* Leagues */}
+                  <Route path="/leagues" element={<Leagues />} />
+                  <Route path="/leagues/:leagueId" element={<LeagueStandings />} />
+
+                  {/* Cups */}
+                  <Route path="/cups" element={<CupCompetitions />} />
+                  <Route path="/cups/:cupId" element={<CupDetail />} />
+
+                  {/* News */}
+                  <Route path="/news/:id" element={<NewsDetail />} />
+
+                  {/* Media sub‑pages */}
+                  <Route path="/media/videos" element={<MediaVideos />} />
+                  <Route path="/media/galleries" element={<MediaGalleries />} />
+                  <Route path="/media/galleries/:id" element={<GalleryDetail />} />
+                  <Route path="/media/accreditation" element={<MediaAccreditation />} />
+
+                  {/* Cart & Orders */}
+                  <Route path="/cart" element={<Cart />} />
+                  <Route path="/shop/confirmation/:id" element={<OrderConfirmation />} />
+
+                  {/* Promotion/Relegation (admin only) */}
+                  <Route
+                    path="/admin/promotion-relegation"
+                    element={
+                      <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+                        <PromotionRelegation />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  {/* National Team Detail */}
+                  <Route path="/national-teams/:teamId" element={<NationalTeamDetail />} />
+
+                </Routes>
+              </AnimatePresence>
+            </main>
+          </div>
+        </CartProvider>
+      </AuthProvider>
+    </Router>
+  );
+}
+
+export default App;
+
+
+utils/assets.js;
+// frontend/src/utils/assets.js
+const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+
+/**
+ * Turn a stored image path into a fully-qualified URL.
+ * - Absolute URLs (http/https/data/blob) pass through untouched.
+ * - Relative paths (/assets/...) get the API base prepended.
+ */
+export function resolveAssetUrl(url) {
+  if (!url) return '';
+  if (/^(https?:|data:|blob:)/i.test(url)) return url;
+  return `${API_BASE}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
+
+
+Main system backend (pythonfaz/app/);
+
+models/__init__.py;
+# app/models/__init__.py
+from app.models._base import Base, UserRole, MatchEventType, Gender, LeagueLevel, MatchType, TournamentCategory, ToDictMixin
+from app.models.associations import news_tags
+from app.models.user import User
+from app.models.player import Player
+from app.models.league import League
+from app.models.league_standing import LeagueStanding
+from app.models.match import Match
+from app.models.match_event import MatchEvent
+from app.models.match_report import MatchReport
+from app.models.news import News
+from app.models.tag import Tag
+from app.models.video import Video
+from app.models.gallery import Gallery
+from app.models.gallery_image import GalleryImage
+from app.models.cup_competition import CupCompetition
+from app.models.cup_season import CupSeason
+from app.models.cup_match import CupMatch
+from app.models.national_team import NationalTeam
+from app.models.national_team_fixture import NationalTeamFixture
+from app.models.tournament import Tournament
+from app.models.tournament_participation import TournamentParticipation
+from app.models.promotion_relegation_rule import PromotionRelegationRule
+from app.models.promotion_relegation import PromotionRelegation
+from app.models.continental_qualification import ContinentalQualification
+from app.models.bulk_import_log import BulkImportLog
+from app.models.season import Season
+from app.models.league_table import LeagueTable
+from app.models.competition import Competition
+from app.models.competition_season import CompetitionSeason
+from app.models.product_category import ProductCategory
+from app.models.product import Product
+from app.models.cart import Cart
+from app.models.cart_item import CartItem
+from app.models.country import Country
+
+# Ticketing models (updated to use Match)
+from app.models.club import Club
+from app.models.ticket_type import TicketType
+from app.models.ticket import Ticket
+from app.models.order import Order
+from app.models.order_item import OrderItem
+from app.models.hold import SeatHold
+from app.models.role import Role
+from app.models.user_role import UserRole
+
+# Other models
+from app.models.stage import Stage
+from app.models.group import Group
+from app.models.competition_match import CompetitionMatch
+from app.models.standing import Standing
+from app.models.qualification_rule import QualificationRule
+from app.models.group_national_team import GroupNationalTeam
+from app.models.group_club import GroupClub
+from app.models.content import HeroSlide, Partner, GovernanceMember, Page
+from .stadium_section import StadiumSection
+
+__all__ = [
+    'Base', 'Role', 'UserRole', 'MatchEventType', 'Gender', 'LeagueLevel', 'MatchType', 'TournamentCategory', 'ToDictMixin',
+    'news_tags',
+    'User', 'Player', 'League', 'LeagueStanding', 'Match', 'MatchEvent', 'MatchReport',
+    'News', 'Tag', 'Video', 'Gallery', 'GalleryImage',
+    'CupCompetition', 'CupSeason', 'CupMatch',
+    'NationalTeam', 'NationalTeamFixture',
+    'Tournament', 'TournamentParticipation',
+    'PromotionRelegationRule', 'PromotionRelegation',
+    'ContinentalQualification', 'BulkImportLog', 'Season', 'LeagueTable',
+    'Competition', 'CompetitionSeason',
+    'ProductCategory', 'Product', 'Cart', 'CartItem', 'Country',
+    # Ticketing
+    'Club', 'TicketType', 'Ticket', 'Order', 'OrderItem', 'SeatHold',
+    'Stage', 'Group', 'CompetitionMatch', 'Standing', 'QualificationRule',
+    'GroupNationalTeam', 'GroupClub', 'StadiumSection', 'HeroSlide', 'Partner', 'GovernanceMember', 'Page',
+]
+
+
+models/user.py;
+# app/models/user.py
+from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
+from app.models._base import Base, ToDictMixin
+import uuid
+
+
+class User(Base, ToDictMixin):
+    __tablename__ = "users"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    email = Column(String, unique=True, index=True)
+    username = Column(String, unique=True, index=True, nullable=True)
+    hashed_password = Column(String)
+    first_name = Column(String)
+    last_name = Column(String)
+    full_name = Column(String)
+    phone = Column(String(20), nullable=True)
+
+    # Legacy single-role column. Kept because auth guards and other code
+    # read `user.role`. It is automatically synced to roles[0] on write.
+    role = Column(String, default='viewer')
+
+    club_id = Column(UUID(as_uuid=True), ForeignKey("clubs.id"), nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    club = relationship("Club", back_populates="users")
+    orders = relationship("Order", back_populates="user")
+
+    # The real relationship — the source of truth for permissions
+    roles = relationship(
+        "Role",
+        secondary="user_roles",
+        back_populates="users",
+        lazy="selectin",
+    )
+
+    def has_role(self, role_name):
+        """Check for a role by name. Falls back to the legacy column if the
+        many-to-many relationship hasn't been populated yet."""
+        if self.roles:
+            return any(r.name == role_name for r in self.roles)
+        return self.role == role_name
+
+    def sync_primary_role(self):
+        """Keep the legacy `role` column in step with the `roles` list."""
+        if self.roles:
+            self.role = self.roles[0].name
+        # If roles is empty, leave `role` as-is so existing data isn't lost.
+
+    def to_dict(self):
+        role_names = [r.name for r in self.roles] if self.roles else []
+        if not role_names and self.role:
+            role_names = [self.role]
+
+        return {
+            "id": str(self.id),
+            "email": self.email,
+            "username": self.username,
+            "first_name": self.first_name,
+            "last_name": self.last_name,
+            "full_name": self.full_name,
+            "phone": self.phone,
+            "is_active": self.is_active,
+            "role": self.role,
+            "roles": role_names,
+            "club_id": str(self.club_id) if self.club_id else None,
+        }
+
+models/_base.py;
+from app.database import db
+from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, ForeignKey, Table, JSON, Date, Enum as SQLEnum
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+import enum
+import uuid
+
+# ------------------ Custom base model with to_dict ------------------
+class Base(db.Model):
+    __abstract__ = True
+
+    def to_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
+# Mixin for models that don't inherit from Base (optional)
+class ToDictMixin:
+    def to_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
+# ------------------ Enums (unchanged) ------------------
+class UserRole(str, enum.Enum):
+    ADMIN = "admin"
+    MATCH_COMMISSIONER = "match_commissioner"
+    MEDIA_OFFICER = "media_officer"
+    CLUB_REP = "club_rep"
+    REFEREE = "referee"
+    VIEWER = "viewer"
+
+class MatchEventType(str, enum.Enum):
+    GOAL = "goal"
+    ASSIST = "assist"
+    YELLOW_CARD = "yellow_card"
+    RED_CARD = "red_card"
+    SUBSTITUTION = "substitution"
+    PENALTY = "penalty"
+    OWN_GOAL = "own_goal"
+
+class Gender(str, enum.Enum):
+    MALE = "male"
+    FEMALE = "female"
+
+class LeagueLevel(str, enum.Enum):
+    SUPER_LEAGUE = "super_league"
+    DIVISION_ONE = "division_one"
+    DIVISION_TWO = "division_two"
+    DIVISION_THREE = "division_three"
+    PROVINCIAL = "provincial"
+    NATIONAL_LEAGUE_SOUTH = "national_league_south"
+    NATIONAL_LEAGUE_NORTH = "national_league_north"
+
+class MatchType(str, enum.Enum):
+    LEAGUE = "league"
+    CUP = "cup"
+    FRIENDLY = "friendly"
+    TOURNAMENT = "tournament"
+    QUALIFIER = "qualifier"
+
+class TournamentCategory(str, enum.Enum):
+    FRIENDLY = "friendly"
+    COSAFA = "cosafa"
+    AFCON = "afcon"
+    WAFCON = "wafcon"
+    FOUR_NATIONS = "four_nations"
+    CHAN = "chan"
+    FIFA_WORLD_CUP = "fifa_world_cup"
+    OLYMPICS = "olympics"
+
+__init__.py (app factory);
+# app/__init__.py
+from flask import Flask
+from flask_cors import CORS
+from flask_jwt_extended import JWTManager
+from flask_migrate import Migrate
+from app.database import db
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
+def create_app():
+    app = Flask(__name__)
+    app.url_map.strict_slashes = False
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret')
+    app.config['JWT_SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-jwt-secret')
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 MB
+
+    db.init_app(app)
+    Migrate(app, db)
+
+    CORS(app)
+    JWTManager(app)
+
+    # ---- Blueprint imports ----
+    from app.routes import (
+        admin, assets, bulk_import, competitions, countries, cups, leagues,
+        match_events, matches, media, national_teams, clubs, news,
+        players, reports, shop, tables, teams, users, content, uploads
+                )
+    from app.ticketing import api as ticket_api
+    from app.ticketing import auth as ticket_auth
+    from app.ticketing import admin as ticket_admin
+    from app.ticketing import club as ticket_club
+    from app.ticketing import payment as ticket_payment
+    from app.routes import competitions_management
+
+    # ---- Static assets: served at the root, NOT under /api ----
+    app.register_blueprint(assets.bp, url_prefix='/assets')
+
+    # ---- Everything else under /api ----
+    app.register_blueprint(admin.bp, url_prefix='/api/admin')
+    app.register_blueprint(bulk_import.bp, url_prefix='/api/bulk-import')
+    app.register_blueprint(competitions.bp, url_prefix='/api/competitions')
+    app.register_blueprint(competitions_management.bp, url_prefix='/api/competitions-management')
+    app.register_blueprint(countries.bp, url_prefix='/api/countries')
+    app.register_blueprint(cups.bp, url_prefix='/api/cups')
+    app.register_blueprint(leagues.bp, url_prefix='/api/leagues')
+    app.register_blueprint(match_events.bp, url_prefix='/api/match-events')
+    app.register_blueprint(matches.bp, url_prefix='/api/matches')
+    app.register_blueprint(media.bp, url_prefix='/api/media')
+    app.register_blueprint(national_teams.bp, url_prefix='/api/national-teams')
+    app.register_blueprint(clubs.bp, url_prefix='/api/clubs')
+    app.register_blueprint(news.bp, url_prefix='/api/news')
+    app.register_blueprint(players.bp, url_prefix='/api/players')
+    app.register_blueprint(reports.bp, url_prefix='/api/reports')
+    app.register_blueprint(shop.bp, url_prefix='/api/shop')
+    app.register_blueprint(tables.bp, url_prefix='/api/league-table')
+    app.register_blueprint(teams.bp, url_prefix='/api/teams')
+    app.register_blueprint(users.bp, url_prefix='/api/users')
+    app.register_blueprint(ticket_api.bp, url_prefix='/api/ticketing')
+    app.register_blueprint(ticket_auth.bp, url_prefix='/api/ticketing/auth')
+    app.register_blueprint(ticket_admin.bp, url_prefix='/api/ticketing/admin')
+    app.register_blueprint(ticket_club.bp, url_prefix='/api/ticketing/club')
+    app.register_blueprint(ticket_payment.bp, url_prefix='/api/ticketing/payment')
+    app.register_blueprint(content.bp, url_prefix='/api/content')
+    app.register_blueprint(uploads.bp, url_prefix='/api/uploads')
+
+    # ------------------------------------------------------------------
+    # Seed default roles + backfill legacy users
+    # Runs on every startup — cheap no-op when data already exists.
+    # ------------------------------------------------------------------
+    with app.app_context():
+        try:
+            from app.models import Role, User
+
+            DEFAULT_ROLES = [
+                ('super_admin', 'Super Administrator — full system access'),
+                ('faz_admin', 'FAZ Administrator — national teams, clubs, competitions'),
+                ('club_admin', 'Club Administrator — manage club operations'),
+                ('club_officer', 'Club Officer — manage matches and ticket sales'),
+                ('scanner', 'Ticket Scanner — verify tickets at gates'),
+                ('customer', 'Customer — browse and buy tickets'),
+            ]
+
+            # 1. Ensure every default role exists
+            created_any = False
+            for name, description in DEFAULT_ROLES:
+                if not Role.query.filter_by(name=name).first():
+                    db.session.add(Role(name=name, description=description))
+                    created_any = True
+            if created_any:
+                db.session.commit()
+                print("[startup] seeded default roles")
+
+            # 2. Backfill users who have a legacy `role` string but no M2M rows
+            backfilled = 0
+            for user in User.query.all():
+                if user.roles:
+                    continue
+                if user.role:
+                    role = Role.query.filter_by(name=user.role).first()
+                    if role:
+                        user.roles.append(role)
+                        backfilled += 1
+            if backfilled:
+                db.session.commit()
+                print(f"[startup] backfilled roles for {backfilled} user(s)")
+
+        except Exception as e:
+            db.session.rollback()
+            print(f"[startup] role seed failed: {e}")
+
+        try:
+            from app.models.content import HeroSlide, Partner, GovernanceMember, Page
+
+            # Seed hero slides if empty
+            if HeroSlide.query.count() == 0:
+                db.session.add_all([
+                    HeroSlide(title='Chipolopolo Rising', subtitle='Pride of Zambia',
+                              image_url='https://images.unsplash.com/photo-1522778119026-d647f0596c67?w=1600',
+                              cta_text='Support the Team', cta_link='/national-teams', slide_order=1),
+                    HeroSlide(title='FAZ Super League', subtitle='The best of Zambian football',
+                              image_url='https://images.unsplash.com/photo-1459865264687-674d540dc3f7?w=1600',
+                              cta_text='View Fixtures', cta_link='/matches', slide_order=2),
+                    HeroSlide(title='Grassroots Development', subtitle="Building tomorrow's stars today",
+                              image_url='https://images.unsplash.com/photo-1517466787929-bc90951d0974?w=1600',
+                              cta_text='Get Involved', cta_link='/about', slide_order=3),
+                ])
+                db.session.commit()
+
+            # Seed partners if empty
+            if Partner.query.count() == 0:
+                base = '/assets/partners'
+                db.session.add_all([
+                    Partner(name='ABSA Zambia', logo_url=f'{base}/partner_absa_zambia.png', partner_order=1),
+                    Partner(name='Eden University', logo_url=f'{base}/partner_eden_university.png', partner_order=2),
+                    Partner(name='MTN Zambia', logo_url=f'{base}/partner_mtn_zambia.png', partner_order=3),
+                    Partner(name='Zambian Breweries', logo_url=f'{base}/partner_zambian_breweries.jpg', partner_order=4),
+                    Partner(name='Trade Kings Zambia', logo_url=f'{base}/partner_trade_kings_zambia.jpg', partner_order=5),
+                ])
+                db.session.commit()
+
+            # Seed default pages if empty
+            if Page.query.count() == 0:
+                db.session.add_all([
+                    Page(path='about/history',          title='Our History',
+                         category='about',      content='', is_published=True, page_order=1),
+                    Page(path='about/mission',          title='Mission & Vision',
+                         category='about',      content='', is_published=True, page_order=2),
+                    Page(path='committees',             title='Committees',
+                         category='about',      content='', is_published=True, page_order=3),
+                    Page(path='partners',               title='Our Partners',
+                         category='about',      content='', is_published=True, page_order=4),
+                    Page(path='governance/excom',       title='Executive Committee',
+                         category='governance', content='', is_published=True, page_order=1),
+                    Page(path='documents',              title='Documents',
+                         category='documents',  content='', is_published=True, page_order=1),
+                    Page(path='documents/disciplinary', title='Disciplinary Code',
+                         category='documents',  content='', is_published=True, page_order=2),
+                ])
+                db.session.commit()
+                print("[startup] seeded default pages")
+                        # Seed governance members if empty
+            if GovernanceMember.query.count() == 0:
+                base = '/assets/excom'
+
+                # --- National Executive Committee ---
+                national = [
+                    ('Keith Mweemba',       'President',                'faz_president.jpg',                 1),
+                    ('Mutale Ng’andu',      'Vice President',           'faz_vice_president.jpg',            2),
+                    ('Charles Chakatazya',   'General Secretary',        'faz_general_secretary.jpg',         3),
+                    ('Col. Priscilla Katoba','Women’s Representative',  'faz_womens_representative.jpg',     4),
+                ]
+                for order, (name, position, filename, _) in enumerate(
+                    [(n, p, f, o) for n, p, f, o in national], start=0
+                ):
+                    pass  # (placeholder — real loop below)
+
+                for name, position, filename, member_order in national:
+                    db.session.add(GovernanceMember(
+                        name=name,
+                        position=position,
+                        category='national',
+                        image_url=f'{base}/{filename}',
+                        term_start='2025',
+                        term_end='2029',
+                        member_order=member_order,
+                        is_active=True,
+                    ))
+
+                # --- Provincial Representatives ---
+                provincial = [
+                    ('Lusaka',         'Jordan Maliti',       'faz_lusaka_province_representative.jpg'),
+                    ('Central',        'Chisanga Pule',       'faz_central_province_representative.jpg'),
+                    ('Copperbelt',     'Patrick Ndhlovu',     'faz_copperbelt_province_representative.jpg'),
+                    ('Luapula',        'Mweemba Mujala',      'faz_luapula_province_representative.jpg'),
+                    ('Southern',       'Nicholas Moomba',     'faz_southern_province_representative.jpg'),
+                    ('Northern',       'Chikonde Mbalazi',    'faz_northern_province_representative.jpg'),
+                    ('Muchinga',       'Samuel Mwape',        'faz_muchinga_province_representative.jpg'),
+                    ('North‑Western',  'Brian Sakulen’ga',    'faz_north_western_province_representative.jpg'),
+                    ('Western',        'David Simwinga',      'faz_western_province_representative.jpg'),
+                    ('Eastern',        'Patrick Nyirenda',    'faz_eastern_province_representative.jpg'),
+                ]
+                for member_order, (province, name, filename) in enumerate(provincial, start=1):
+                    db.session.add(GovernanceMember(
+                        name=name,
+                        position='Provincial Representative',
+                        category='provincial',
+                        province=province,
+                        image_url=f'{base}/{filename}',
+                        term_start='2025',
+                        term_end='2029',
+                        member_order=member_order,
+                        is_active=True,
+                    ))
+
+                db.session.commit()
+                print("[startup] seeded governance members")
+
+        except Exception as e:
+            db.session.rollback()
+            print(f"[startup] content seed failed: {e}")
+
+    @app.route('/api/health')
+    def health_check():
+        return {"status": "healthy", "message": "FAZ API is running"}
+
+    @app.route('/api')
+    def root():
+        return {"message": "Welcome to Football Association of Zambia API"}
+
+    return app
+
+
+database.py;
+# app/database.py
+from flask_sqlalchemy import SQLAlchemy
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+db = SQLAlchemy()
+
+def get_db():
+    return db.session
+    
+
+auth.py;
+# app/auth.py
+from datetime import datetime, timedelta
+from typing import Optional
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from flask import request, jsonify, abort, Blueprint
+from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required, verify_jwt_in_request
+from functools import wraps
+from app.database import db
+from app.models import User, UserRole
+import os
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
+
+# ---------- Password helpers ----------
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+# ---------- JWT helpers ----------
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+# ---------- User authentication ----------
+def authenticate_user(username: str, password: str):
+    user = User.query.filter_by(username=username).first()
+    if not user or not verify_password(password, user.hashed_password):
+        return False
+    return user
+
+def get_current_user():
+    try:
+        verify_jwt_in_request()
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        if not user:
+            abort(401, description="User not found")
+        return user
+    except Exception:
+        abort(401, description="Invalid token")
+
+def get_current_user_optional():
+    try:
+        verify_jwt_in_request()
+        user_id = get_jwt_identity()
+        return User.query.get(user_id)
+    except:
+        return None
+
+def admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        user = get_current_user()
+        if user.role not in ['admin', 'super_admin']:
+            abort(403, description="Admin only")
+        return f(*args, **kwargs)
+    return decorated
+
+# ---------- Auth Blueprint ----------
+auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
+
+@auth_bp.route('/register', methods=['POST'])
+def register():
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+
+    email = data.get('email')
+    password = data.get('password')
+    first_name = data.get('first_name')
+    last_name = data.get('last_name')
+    phone = data.get('phone')
+    role = data.get('role', 'viewer')
+
+    if not email or not password:
+        return jsonify({'error': 'Email and password required'}), 400
+
+    if User.query.filter_by(email=email).first():
+        return jsonify({'error': 'Email already registered'}), 409
+
+    user = User(
+        email=email,
+        username=email,
+        full_name=f"{first_name or ''} {last_name or ''}".strip(),
+        role=role,
+        is_active=True
+    )
+    user.hashed_password = get_password_hash(password)
+
+    db.session.add(user)
+    db.session.commit()
+
+    access_token = create_access_token(
+        identity=str(user.id),
+        additional_claims={'role': user.role},
+        expires_delta=timedelta(hours=24)
+    )
+    return jsonify({
+        'message': 'Registration successful',
+        'user': user.to_dict(),
+        'access_token': access_token
+    }), 201
+
+@auth_bp.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    email = data.get('email')
+    password = data.get('password')
+
+    user = User.query.filter_by(email=email).first()
+    if not user or not verify_password(password, user.hashed_password):
+        return jsonify({'error': 'Invalid email or password'}), 401
+
+    if not user.is_active:
+        return jsonify({'error': 'Account disabled'}), 403
+
+    access_token = create_access_token(
+        identity=str(user.id),
+        additional_claims={'role': user.role},
+        expires_delta=timedelta(hours=24)
+    )
+    return jsonify({
+        'user': user.to_dict(),
+        'access_token': access_token
+    }), 200
+
+@auth_bp.route('/me', methods=['GET'])
+@jwt_required()
+def get_current_user_info():
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    return jsonify(user.to_dict()), 200
+
+@auth_bp.route('/ping', methods=['GET'])
+def ping():
+    return jsonify({"message": "Auth blueprint is alive!"}), 200
+
+
+routes/assets.py;
+# app/routes/assets.py
+import os
+from flask import Blueprint, send_from_directory, abort, jsonify
+
+bp = Blueprint('assets', __name__)
+
+# __file__ is  backend/app/routes/assets.py
+#   dirname  → backend/app/routes
+#   ..       → backend/app
+#   +assets  → backend/app/assets   ✅
+_ASSETS_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '..', 'assets')
+)
+
+print("=" * 70)
+print(f"[assets] __file__     = {__file__}")
+print(f"[assets] _ASSETS_DIR  = {_ASSETS_DIR}")
+print(f"[assets] exists?      = {os.path.isdir(_ASSETS_DIR)}")
+if os.path.isdir(_ASSETS_DIR):
+    print(f"[assets] top-level    = {os.listdir(_ASSETS_DIR)}")
+print("=" * 70)
+
+
+@bp.route('/debug', methods=['GET'])
+def debug():
+    exists = os.path.isdir(_ASSETS_DIR)
+    tree = {}
+    if exists:
+        for root, _dirs, files in os.walk(_ASSETS_DIR):
+            rel = os.path.relpath(root, _ASSETS_DIR)
+            tree[rel] = files
+    return jsonify({
+        "assets_dir": _ASSETS_DIR,
+        "exists": exists,
+        "tree": tree,
+    })
+
+
+@bp.route('/<path:filename>', methods=['GET'])
+def serve_asset(filename):
+    requested = os.path.abspath(os.path.join(_ASSETS_DIR, filename))
+    print(f"[assets] GET {filename} -> {requested}  isfile? {os.path.isfile(requested)}")
+
+    if not requested.startswith(_ASSETS_DIR):
+        abort(404)
+    if not os.path.isfile(requested):
+        abort(404)
+
+    return send_from_directory(_ASSETS_DIR, filename)
+
+
+
+
+Ticketing subsystem frontend (tickets/frontend/src/);
+
+api.js;
+this file does not exist
+
+context/AuthContext.jsx;
+import { createContext, useContext, useState, useEffect } from 'react'
+import axios from 'axios'
+import toast from 'react-hot-toast'
+
+const AuthContext = createContext()
+export const useAuth = () => useContext(AuthContext)
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+
+const api = axios.create({
+  baseURL: API_URL,
+})
+
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token')
+    if (token) config.headers.Authorization = `Bearer ${token}`
+    return config
+  },
+  (error) => Promise.reject(error)
+)
+
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    const storedUser = localStorage.getItem('user')
+    if (token && storedUser) {
+      try {
+        const userData = JSON.parse(storedUser)
+        if (userData.role) userData.roles = [userData.role]
+        else userData.roles = ['customer']
+        setUser(userData)
+        setLoading(false)
+        // Optionally refresh user data in background
+        api.get('/api/ticketing/auth/me')
+          .then(res => {
+            const freshUser = res.data
+            if (freshUser.role) freshUser.roles = [freshUser.role]
+            else freshUser.roles = ['customer']
+            setUser(freshUser)
+            localStorage.setItem('user', JSON.stringify(freshUser))
+          })
+          .catch(() => {
+            // Token invalid, clear storage
+            localStorage.removeItem('token')
+            localStorage.removeItem('user')
+            setUser(null)
+          })
+      } catch (e) {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        setUser(null)
+        setLoading(false)
+      }
+    } else {
+      setLoading(false)
+    }
+  }, [])
+
+  const login = async (email, password) => {
+    try {
+      const res = await api.post('/api/ticketing/auth/login', { email, password })
+      const token = res.data.access_token
+      let userData = res.data.user
+      if (userData.role) userData.roles = [userData.role]
+      else userData.roles = ['customer']
+      localStorage.setItem('token', token)
+      localStorage.setItem('user', JSON.stringify(userData))
+      setUser(userData)
+      toast.success('Login successful')
+      return true
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Login failed')
+      return false
+    }
+  }
+
+  const register = async (userData) => {
+    try {
+      const res = await api.post('/api/ticketing/auth/register', userData)
+      const token = res.data.access_token
+      let newUser = res.data.user
+      if (newUser.role) newUser.roles = [newUser.role]
+      else newUser.roles = ['customer']
+      localStorage.setItem('token', token)
+      localStorage.setItem('user', JSON.stringify(newUser))
+      setUser(newUser)
+      toast.success('Account created')
+      return true
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Registration failed')
+      return false
+    }
+  }
+
+  const logout = () => {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    setUser(null)
+    toast.success('Logged out')
+  }
+
+  const hasRole = (role) => user?.roles?.includes(role) || false
+  const hasAnyRole = (roles) => roles.some(r => user?.roles?.includes(r))
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-green-50">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-gray-600">Loading session...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <AuthContext.Provider value={{ user, loading, login, register, logout, hasRole, hasAnyRole, api }}>
+      {children}
+    </AuthContext.Provider>
+  )
+}
+
+
+layouts/MainLayout.jsx;
+import { Link } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
+import { useState, useEffect } from 'react'
+import { 
+  FaFutbol, FaBars, FaTimes, FaUserCircle, 
+  FaFacebookF, FaInstagram, FaYoutube, 
+  FaPhone, FaEnvelope, FaChevronDown, FaChevronRight 
+} from 'react-icons/fa';
+import { FaXTwitter } from 'react-icons/fa6';
+import logoImage from '../pages/assets/logo/faz logo.jpg';
+
+export default function MainLayout({ children }) {
+  const frontendUrl = import.meta.env.VITE_API_FRONTEND_MAIN;
+  const { user, logout, loading } = useAuth()
+  const [scrolled, setScrolled] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+    const socialLinks = [
+    { icon: FaFacebookF, href: 'https://web.facebook.com/FootballAssociationZambia', label: 'Facebook' },
+    { icon: FaXTwitter, href: 'https://x.com/FAZFootball', label: 'X' },
+    { icon: FaYoutube, href: 'https://www.youtube.com/@FAZTVOfficial', label: 'YouTube' },
+  ];
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 10)
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-orange-50">
+      {/* Header */}
+      <header className={`fixed top-0 w-full z-50 transition-all duration-300 ${
+        scrolled 
+          ? 'bg-white/95 backdrop-blur-md shadow-lg py-2' 
+          : 'bg-gradient-to-r from-green-700 via-green-600 to-green-700 py-4'
+      }`}>
+        <div className="container mx-auto px-4">
+          <div className="flex justify-between items-center">
+            {/* Logo */}
+            <Link to="/" className="flex items-center gap-3 group">
+              <div className="relative">
+                <div className="absolute inset-0 bg-orange-500 rounded-full blur-lg opacity-50 group-hover:opacity-75 transition"></div>
+                <div className="relative w-10 h-10 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center shadow-lg">
+                  <img src={logoImage} alt="FAZ Logo" className="h-10 w-auto object-contain rounded-md" />
+
+                </div>
+              </div>
+              <div>
+                <h1 className={`font-bold text-2xl tracking-tight ${scrolled ? 'text-green-700' : 'text-white'}`}>
+                  FAZ<span className="text-orange-400">Tickets</span>
+                </h1>
+                <p className={`text-xs -mt-1 ${scrolled ? 'text-green-600' : 'text-green-100'}`}>
+                  Football Association of Zambia
+                </p>
+              </div>
+            </Link>
+
+            {/* Desktop Navigation */}
+            <nav className="hidden md:flex items-center gap-8">
+              <NavLink to="/" scrolled={scrolled}>Home</NavLink>
+              <NavLink to="/matches" scrolled={scrolled}>Matches</NavLink>
+              <NavLink to={frontendUrl} scrolled={scrolled} target="_blank" rel="noopener noreferrer">Main FAZ Website</NavLink>
+              {!loading && user && (
+                <>
+                  <NavLink to="/dashboard" scrolled={scrolled}>Dashboard</NavLink>
+                  {(user.roles?.includes('super_admin') || user.roles?.includes('faz_admin')) && (
+                    <NavLink to="/admin" scrolled={scrolled}>Admin</NavLink>
+                  )}
+                  {(user.roles?.includes('club_admin') || user.roles?.includes('club_officer')) && (
+                    <NavLink to="/club" scrolled={scrolled}>Club</NavLink>
+                  )}
+                  {(user.roles?.includes('scanner') || user.roles?.includes('super_admin')) && (
+                    <NavLink to="/verify" scrolled={scrolled}>Verify</NavLink>
+                  )}
+                </>
+              )}
+            </nav>
+
+            {/* User Menu */}
+            <div className="flex items-center gap-4">
+              {!loading && (
+                <>
+                  {user ? (
+                    <div className="flex items-center gap-3">
+                      <div className="hidden md:block">
+                        <p className={`text-sm font-medium ${scrolled ? 'text-gray-700' : 'text-white'}`}>
+                          {user.first_name || user.email}
+                        </p>
+                        <p className={`text-xs ${scrolled ? 'text-gray-500' : 'text-green-100'}`}>
+                          {user.roles?.[0]?.replace('_', ' ') || 'User'}
+                        </p>
+                      </div>
+                      <div className="relative group">
+                        <button className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white bg-gradient-to-br from-orange-500 to-red-600 shadow-lg hover:shadow-xl transition`}>
+                          {user.first_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'}
+                        </button>
+                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 border border-gray-100">
+                          <div className="p-2">
+                            <button
+                              onClick={logout}
+                              className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                            >
+                              Sign Out
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Link
+                        to="/login"
+                        className={`px-4 py-2 rounded-lg font-medium transition ${
+                          scrolled
+                            ? 'text-green-700 hover:bg-green-50'
+                            : 'text-white hover:bg-white/10'
+                        }`}
+                      >
+                        Login
+                      </Link>
+                      <Link
+                        to="/register"
+                        className="px-4 py-2 rounded-lg font-medium bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg hover:shadow-xl transition hover:scale-105"
+                      >
+                        Register
+                      </Link>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Mobile Menu Button */}
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className={`md:hidden p-2 rounded-lg ${scrolled ? 'text-gray-700 hover:bg-gray-100' : 'text-white hover:bg-white/10'}`}
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {mobileMenuOpen ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  )}
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Mobile Menu */}
+          {mobileMenuOpen && (
+            <div className="md:hidden mt-4 pb-4 space-y-2">
+              <MobileNavLink to="/" onClick={() => setMobileMenuOpen(false)}>Home</MobileNavLink>
+              <MobileNavLink to="/matches" onClick={() => setMobileMenuOpen(false)}>Matches</MobileNavLink>
+              {user && (
+                <>
+                  <MobileNavLink to="/dashboard" onClick={() => setMobileMenuOpen(false)}>Dashboard</MobileNavLink>
+                  {user.roles?.includes('super_admin') || user.roles?.includes('faz_admin') && (
+                    <MobileNavLink to="/admin" onClick={() => setMobileMenuOpen(false)}>Admin</MobileNavLink>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="pt-20">
+        {children}
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-gradient-to-br from-gray-900 to-gray-800 text-white mt-16">
+        <div className="container mx-auto px-4 py-12">
+          <div className="grid md:grid-cols-4 gap-8">
+            <div>
+              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+          <img src={logoImage} alt="FAZ Logo" className="h-10 w-auto object-contain rounded-md" />
+                                FAZ Tickets
+              </h3>
+              <p className="text-gray-400 text-sm">
+                Official ticketing platform of the Football Association of Zambia.
+              </p>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4">Quick Links</h4>
+              <ul className="space-y-2 text-gray-400">
+                <li><Link to="/matches" className="hover:text-orange-400 transition">Find Matches</Link></li>
+                <li><Link to="/register" className="hover:text-orange-400 transition">Create Account</Link></li>
+                <li><Link to="/login" className="hover:text-orange-400 transition">Sign In</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4">Contact</h4>
+              <ul className="space-y-2 text-gray-400">
+                <li>Football House, Lusaka</li>
+                <li>tickets@faz.co.zm</li>
+                <li>+260 211 123 456</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-4">Follow Us</h4>
+              <div className="flex gap-3">
+                {/* <SocialIcon>📘</SocialIcon>
+                <SocialIcon>🐦</SocialIcon>
+                <SocialIcon>📷</SocialIcon>
+                <SocialIcon>▶️</SocialIcon>
+                */}
+
+                 {socialLinks.map((social, idx) => (
+                <a key={idx} href={social.href} target="_blank" rel="noopener noreferrer" className="hover:text-faz-orange transition-colors">
+                  <social.icon size={14} />
+                </a>
+              ))}
+              </div>
+            </div>
+          </div>
+          <div className="border-t border-gray-700 mt-8 pt-8 text-center text-gray-500 text-sm">
+            © 2026 <a href={frontendUrl} target="_blank" rel="noopener noreferrer" className="hover:text-orange-400 transition">
+              Football Association of Zambia
+            </a>. All rights reserved.
+          </div>
+        </div>
+      </footer>
+    </div>
+  )
+}
+
+function NavLink({ to, children, scrolled }) {
+  return (
+    <Link
+      to={to}
+      className={`font-medium transition ${
+        scrolled
+          ? 'text-gray-700 hover:text-green-600'
+          : 'text-white hover:text-orange-200'
+      }`}
+    >
+      {children}
+    </Link>
+  )
+}
+
+function MobileNavLink({ to, children, onClick }) {
+  return (
+    <Link
+      to={to}
+      onClick={onClick}
+      className="block px-4 py-3 text-gray-700 hover:bg-green-50 rounded-lg transition"
+    >
+      {children}
+    </Link>
+  )
+}
+
+function SocialIcon({ children }) {
+  return (
+    <a href="#" className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center hover:bg-orange-500 transition text-xl">
+      {children}
+    </a>
+  )
+}
+
+components/ui/index.jsx;
+export { default as Button } from './Button'
+export { default as Card, CardHeader, CardTitle, CardBody, CardFooter } from './Card'
+export { default as Badge } from './Badge'
+export { default as Input } from './Input'
+export { default as Select } from './Select'
+export { default as Modal, ModalFooter } from './Modal'
+export { default as Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell } from './Table'
+export { default as Alert } from './Alert'
+export { default as Spinner } from './Spinner'
+export { default as LoadingOverlay } from './LoadingOverlay'
+export { default as Tabs } from './Tabs'
+export { default as StatCard } from './StatCard'
+export { default as EmptyState } from './EmptyState'
+
+
+Ticketing subsystem backend (tickets/backend/app/);
+it uses the same backend as for the main system.
+
+models/__init__.py;
+# app/models/__init__.py
+from app.models._base import Base, UserRole, MatchEventType, Gender, LeagueLevel, MatchType, TournamentCategory, ToDictMixin
+from app.models.associations import news_tags
+from app.models.user import User
+from app.models.player import Player
+from app.models.league import League
+from app.models.league_standing import LeagueStanding
+from app.models.match import Match
+from app.models.match_event import MatchEvent
+from app.models.match_report import MatchReport
+from app.models.news import News
+from app.models.tag import Tag
+from app.models.video import Video
+from app.models.gallery import Gallery
+from app.models.gallery_image import GalleryImage
+from app.models.cup_competition import CupCompetition
+from app.models.cup_season import CupSeason
+from app.models.cup_match import CupMatch
+from app.models.national_team import NationalTeam
+from app.models.national_team_fixture import NationalTeamFixture
+from app.models.tournament import Tournament
+from app.models.tournament_participation import TournamentParticipation
+from app.models.promotion_relegation_rule import PromotionRelegationRule
+from app.models.promotion_relegation import PromotionRelegation
+from app.models.continental_qualification import ContinentalQualification
+from app.models.bulk_import_log import BulkImportLog
+from app.models.season import Season
+from app.models.league_table import LeagueTable
+from app.models.competition import Competition
+from app.models.competition_season import CompetitionSeason
+from app.models.product_category import ProductCategory
+from app.models.product import Product
+from app.models.cart import Cart
+from app.models.cart_item import CartItem
+from app.models.country import Country
+
+# Ticketing models (updated to use Match)
+from app.models.club import Club
+from app.models.ticket_type import TicketType
+from app.models.ticket import Ticket
+from app.models.order import Order
+from app.models.order_item import OrderItem
+from app.models.hold import SeatHold
+from app.models.role import Role
+from app.models.user_role import UserRole
+
+# Other models
+from app.models.stage import Stage
+from app.models.group import Group
+from app.models.competition_match import CompetitionMatch
+from app.models.standing import Standing
+from app.models.qualification_rule import QualificationRule
+from app.models.group_national_team import GroupNationalTeam
+from app.models.group_club import GroupClub
+from app.models.content import HeroSlide, Partner, GovernanceMember, Page
+from .stadium_section import StadiumSection
+
+__all__ = [
+    'Base', 'Role', 'UserRole', 'MatchEventType', 'Gender', 'LeagueLevel', 'MatchType', 'TournamentCategory', 'ToDictMixin',
+    'news_tags',
+    'User', 'Player', 'League', 'LeagueStanding', 'Match', 'MatchEvent', 'MatchReport',
+    'News', 'Tag', 'Video', 'Gallery', 'GalleryImage',
+    'CupCompetition', 'CupSeason', 'CupMatch',
+    'NationalTeam', 'NationalTeamFixture',
+    'Tournament', 'TournamentParticipation',
+    'PromotionRelegationRule', 'PromotionRelegation',
+    'ContinentalQualification', 'BulkImportLog', 'Season', 'LeagueTable',
+    'Competition', 'CompetitionSeason',
+    'ProductCategory', 'Product', 'Cart', 'CartItem', 'Country',
+    # Ticketing
+    'Club', 'TicketType', 'Ticket', 'Order', 'OrderItem', 'SeatHold',
+    'Stage', 'Group', 'CompetitionMatch', 'Standing', 'QualificationRule',
+    'GroupNationalTeam', 'GroupClub', 'StadiumSection', 'HeroSlide', 'Partner', 'GovernanceMember', 'Page',
+]
+
+__init__.py (app factory);
+# app/__init__.py
+from flask import Flask
+from flask_cors import CORS
+from flask_jwt_extended import JWTManager
+from flask_migrate import Migrate
+from app.database import db
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
+def create_app():
+    app = Flask(__name__)
+    app.url_map.strict_slashes = False
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret')
+    app.config['JWT_SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-jwt-secret')
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 MB
+
+    db.init_app(app)
+    Migrate(app, db)
+
+    CORS(app)
+    JWTManager(app)
+
+    # ---- Blueprint imports ----
+    from app.routes import (
+        admin, assets, bulk_import, competitions, countries, cups, leagues,
+        match_events, matches, media, national_teams, clubs, news,
+        players, reports, shop, tables, teams, users, content, uploads
+                )
+    from app.ticketing import api as ticket_api
+    from app.ticketing import auth as ticket_auth
+    from app.ticketing import admin as ticket_admin
+    from app.ticketing import club as ticket_club
+    from app.ticketing import payment as ticket_payment
+    from app.routes import competitions_management
+
+    # ---- Static assets: served at the root, NOT under /api ----
+    app.register_blueprint(assets.bp, url_prefix='/assets')
+
+    # ---- Everything else under /api ----
+    app.register_blueprint(admin.bp, url_prefix='/api/admin')
+    app.register_blueprint(bulk_import.bp, url_prefix='/api/bulk-import')
+    app.register_blueprint(competitions.bp, url_prefix='/api/competitions')
+    app.register_blueprint(competitions_management.bp, url_prefix='/api/competitions-management')
+    app.register_blueprint(countries.bp, url_prefix='/api/countries')
+    app.register_blueprint(cups.bp, url_prefix='/api/cups')
+    app.register_blueprint(leagues.bp, url_prefix='/api/leagues')
+    app.register_blueprint(match_events.bp, url_prefix='/api/match-events')
+    app.register_blueprint(matches.bp, url_prefix='/api/matches')
+    app.register_blueprint(media.bp, url_prefix='/api/media')
+    app.register_blueprint(national_teams.bp, url_prefix='/api/national-teams')
+    app.register_blueprint(clubs.bp, url_prefix='/api/clubs')
+    app.register_blueprint(news.bp, url_prefix='/api/news')
+    app.register_blueprint(players.bp, url_prefix='/api/players')
+    app.register_blueprint(reports.bp, url_prefix='/api/reports')
+    app.register_blueprint(shop.bp, url_prefix='/api/shop')
+    app.register_blueprint(tables.bp, url_prefix='/api/league-table')
+    app.register_blueprint(teams.bp, url_prefix='/api/teams')
+    app.register_blueprint(users.bp, url_prefix='/api/users')
+    app.register_blueprint(ticket_api.bp, url_prefix='/api/ticketing')
+    app.register_blueprint(ticket_auth.bp, url_prefix='/api/ticketing/auth')
+    app.register_blueprint(ticket_admin.bp, url_prefix='/api/ticketing/admin')
+    app.register_blueprint(ticket_club.bp, url_prefix='/api/ticketing/club')
+    app.register_blueprint(ticket_payment.bp, url_prefix='/api/ticketing/payment')
+    app.register_blueprint(content.bp, url_prefix='/api/content')
+    app.register_blueprint(uploads.bp, url_prefix='/api/uploads')
+
+    # ------------------------------------------------------------------
+    # Seed default roles + backfill legacy users
+    # Runs on every startup — cheap no-op when data already exists.
+    # ------------------------------------------------------------------
+    with app.app_context():
+        try:
+            from app.models import Role, User
+
+            DEFAULT_ROLES = [
+                ('super_admin', 'Super Administrator — full system access'),
+                ('faz_admin', 'FAZ Administrator — national teams, clubs, competitions'),
+                ('club_admin', 'Club Administrator — manage club operations'),
+                ('club_officer', 'Club Officer — manage matches and ticket sales'),
+                ('scanner', 'Ticket Scanner — verify tickets at gates'),
+                ('customer', 'Customer — browse and buy tickets'),
+            ]
+
+            # 1. Ensure every default role exists
+            created_any = False
+            for name, description in DEFAULT_ROLES:
+                if not Role.query.filter_by(name=name).first():
+                    db.session.add(Role(name=name, description=description))
+                    created_any = True
+            if created_any:
+                db.session.commit()
+                print("[startup] seeded default roles")
+
+            # 2. Backfill users who have a legacy `role` string but no M2M rows
+            backfilled = 0
+            for user in User.query.all():
+                if user.roles:
+                    continue
+                if user.role:
+                    role = Role.query.filter_by(name=user.role).first()
+                    if role:
+                        user.roles.append(role)
+                        backfilled += 1
+            if backfilled:
+                db.session.commit()
+                print(f"[startup] backfilled roles for {backfilled} user(s)")
+
+        except Exception as e:
+            db.session.rollback()
+            print(f"[startup] role seed failed: {e}")
+
+        try:
+            from app.models.content import HeroSlide, Partner, GovernanceMember, Page
+
+            # Seed hero slides if empty
+            if HeroSlide.query.count() == 0:
+                db.session.add_all([
+                    HeroSlide(title='Chipolopolo Rising', subtitle='Pride of Zambia',
+                              image_url='https://images.unsplash.com/photo-1522778119026-d647f0596c67?w=1600',
+                              cta_text='Support the Team', cta_link='/national-teams', slide_order=1),
+                    HeroSlide(title='FAZ Super League', subtitle='The best of Zambian football',
+                              image_url='https://images.unsplash.com/photo-1459865264687-674d540dc3f7?w=1600',
+                              cta_text='View Fixtures', cta_link='/matches', slide_order=2),
+                    HeroSlide(title='Grassroots Development', subtitle="Building tomorrow's stars today",
+                              image_url='https://images.unsplash.com/photo-1517466787929-bc90951d0974?w=1600',
+                              cta_text='Get Involved', cta_link='/about', slide_order=3),
+                ])
+                db.session.commit()
+
+            # Seed partners if empty
+            if Partner.query.count() == 0:
+                base = '/assets/partners'
+                db.session.add_all([
+                    Partner(name='ABSA Zambia', logo_url=f'{base}/partner_absa_zambia.png', partner_order=1),
+                    Partner(name='Eden University', logo_url=f'{base}/partner_eden_university.png', partner_order=2),
+                    Partner(name='MTN Zambia', logo_url=f'{base}/partner_mtn_zambia.png', partner_order=3),
+                    Partner(name='Zambian Breweries', logo_url=f'{base}/partner_zambian_breweries.jpg', partner_order=4),
+                    Partner(name='Trade Kings Zambia', logo_url=f'{base}/partner_trade_kings_zambia.jpg', partner_order=5),
+                ])
+                db.session.commit()
+
+            # Seed default pages if empty
+            if Page.query.count() == 0:
+                db.session.add_all([
+                    Page(path='about/history',          title='Our History',
+                         category='about',      content='', is_published=True, page_order=1),
+                    Page(path='about/mission',          title='Mission & Vision',
+                         category='about',      content='', is_published=True, page_order=2),
+                    Page(path='committees',             title='Committees',
+                         category='about',      content='', is_published=True, page_order=3),
+                    Page(path='partners',               title='Our Partners',
+                         category='about',      content='', is_published=True, page_order=4),
+                    Page(path='governance/excom',       title='Executive Committee',
+                         category='governance', content='', is_published=True, page_order=1),
+                    Page(path='documents',              title='Documents',
+                         category='documents',  content='', is_published=True, page_order=1),
+                    Page(path='documents/disciplinary', title='Disciplinary Code',
+                         category='documents',  content='', is_published=True, page_order=2),
+                ])
+                db.session.commit()
+                print("[startup] seeded default pages")
+                        # Seed governance members if empty
+            if GovernanceMember.query.count() == 0:
+                base = '/assets/excom'
+
+                # --- National Executive Committee ---
+                national = [
+                    ('Keith Mweemba',       'President',                'faz_president.jpg',                 1),
+                    ('Mutale Ng’andu',      'Vice President',           'faz_vice_president.jpg',            2),
+                    ('Charles Chakatazya',   'General Secretary',        'faz_general_secretary.jpg',         3),
+                    ('Col. Priscilla Katoba','Women’s Representative',  'faz_womens_representative.jpg',     4),
+                ]
+                for order, (name, position, filename, _) in enumerate(
+                    [(n, p, f, o) for n, p, f, o in national], start=0
+                ):
+                    pass  # (placeholder — real loop below)
+
+                for name, position, filename, member_order in national:
+                    db.session.add(GovernanceMember(
+                        name=name,
+                        position=position,
+                        category='national',
+                        image_url=f'{base}/{filename}',
+                        term_start='2025',
+                        term_end='2029',
+                        member_order=member_order,
+                        is_active=True,
+                    ))
+
+                # --- Provincial Representatives ---
+                provincial = [
+                    ('Lusaka',         'Jordan Maliti',       'faz_lusaka_province_representative.jpg'),
+                    ('Central',        'Chisanga Pule',       'faz_central_province_representative.jpg'),
+                    ('Copperbelt',     'Patrick Ndhlovu',     'faz_copperbelt_province_representative.jpg'),
+                    ('Luapula',        'Mweemba Mujala',      'faz_luapula_province_representative.jpg'),
+                    ('Southern',       'Nicholas Moomba',     'faz_southern_province_representative.jpg'),
+                    ('Northern',       'Chikonde Mbalazi',    'faz_northern_province_representative.jpg'),
+                    ('Muchinga',       'Samuel Mwape',        'faz_muchinga_province_representative.jpg'),
+                    ('North‑Western',  'Brian Sakulen’ga',    'faz_north_western_province_representative.jpg'),
+                    ('Western',        'David Simwinga',      'faz_western_province_representative.jpg'),
+                    ('Eastern',        'Patrick Nyirenda',    'faz_eastern_province_representative.jpg'),
+                ]
+                for member_order, (province, name, filename) in enumerate(provincial, start=1):
+                    db.session.add(GovernanceMember(
+                        name=name,
+                        position='Provincial Representative',
+                        category='provincial',
+                        province=province,
+                        image_url=f'{base}/{filename}',
+                        term_start='2025',
+                        term_end='2029',
+                        member_order=member_order,
+                        is_active=True,
+                    ))
+
+                db.session.commit()
+                print("[startup] seeded governance members")
+
+        except Exception as e:
+            db.session.rollback()
+            print(f"[startup] content seed failed: {e}")
+
+    @app.route('/api/health')
+    def health_check():
+        return {"status": "healthy", "message": "FAZ API is running"}
+
+    @app.route('/api')
+    def root():
+        return {"message": "Welcome to Football Association of Zambia API"}
+
+    return app
+
+
+
+Also tell me
+What domain will host the ecommerce subsystem? e.g. shop.faz.kanchtech.com. yes this will be the domain
+
+
+Is the ecommerce subsystem a NEW separate frontend project (like tickets), or a new area in the main system? yes it's a new system, but it operates as a subsystem
+
+Does the vendor portal live on the main system or the ecommerce subsystem? From your description ("all setup is done on the main system"), yes on main system
